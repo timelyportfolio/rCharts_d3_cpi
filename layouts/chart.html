@@ -2,19 +2,13 @@
   <div class='row'>
     <div class='col-md-3'>
       <form class='well'>
-      	{{# controls }}
-        <label><b>{{label}}</b></label>
-    		<select class='form-control' ng-model="opts.{{name}}" 
-          ng-options="ctl for ctl in controls.{{name}}.values">   
-    		</select><br>
-				{{/ controls }}
-        {{# hasFilter }}
+
         <select
           ng-model="selected" 
-          ng-options="c as c.value group by c.variable for c in filters" 
+          ng-options="c.item_code for c in filters" 
           class="form-control" multiple size="10">
         </select>
-        {{/ hasFilter }}
+
       </form>
     </div>
     <div class='col-md-8'>
@@ -32,33 +26,59 @@
 
 
 <script>
+function DemoCtrl( $scope ){
+  $scope.opts = {{{ chartParams }}}
+  
+  $scope.filters = _.map(_.unzip($scope.opts.filters),function(d){return _.zipObject(_.keys($scope.opts.filters),d)})
+  
+  d3.tsv("./data/ap.data.0.Current.tsv", function(err,data){
+    $scope.data = data;
+  })
+  
+  $scope.drawChart = function( data ){
+    drawChart( $scope.opts, data )  
+  }
+
+  $scope.$watch('selected', function(){
+    if (!(typeof($scope.selected) === "undefined")) {
+      $scope.drawChart(
+        _.select($scope.data, function(c){    
+          return _.pluck($scope.selected,"code").indexOf(c.series_id.replace(/\w{3,4}0{3,4}(\d*)\s*/,"$1")) != -1
+        })
+      )
+    }
+  }) 
+}  
+
+
 //nearly all the code can be attributed to http://bl.ocks.org/3891711
 
-//get parameters from rCharts
-var params = {{{ chartParams }}}
-    
-function drawChart( data ) {
-  params.margin = params.margin ? params.margin : {top: 20, right: 220, bottom: 30, left: 50}
-  var width = params.width - margin.left - margin.right,
-      height = params.height - margin.top - margin.bottom;
+function drawChart( params, data ) {
+  if( typeof(params.margin) === "undefined" ) {
+    params.margin = params.margin ? params.margin : {top: 20, right: 220, bottom: 30, left: 50}
+  }
+  var width = params.width - params.margin.left - params.margin.right,
+      height = params.height - params.margin.top - params.margin.bottom;
           
   //make our svg that will house the chart
-  var svg = d3.select("#"+params.chartId).append("svg");
-      .attr("width", width + margin.left + margin.right)
-      .attr("height", height + margin.top + margin.bottom)
+  var svg = d3.select("#"+params.chartId).append("svg")
+      .attr("width", width + params.margin.left + params.margin.right)
+      .attr("height", height + params.margin.top + params.margin.bottom)
     .append("g")
-      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");        
+      .attr("transform", "translate(" + params.margin.left + "," + params.margin.top + ")");        
           
       
   var format = d3.time.format("%b %Y");
   
-  var start = format.parse(data[1].Date[0]);
-  var end = format.parse(data[1].Date[data[1].Date.length-1]);
-  var range = d3.time.months(start,end);
+  var range = d3.extent(data,function(d){return +d.year}).map(
+    function(yr){
+      return new Date(yr + "-01-01");
+    }
+  )
   
   var x = d3.time.scale()
       .range([0,width])
-      .domain(d3.extent(data[1].Date, function(d) { return format.parse(d); }));
+      .domain(range);
   
   var y = d3.scale.linear()
       .range([height, 0]);
@@ -81,36 +101,26 @@ function drawChart( data ) {
       .x(function(d,i) { return x(range[i]); })
       .y(function(d) { return y(d); });
   
-  //d3.csv("average-prices.csv", function(raw) {
-    var newdata = [];
-    //var goods = _(raw).pluck("Name");
+  //d3.csv("average-prices.csv", function(err, raw) {
+    var goods = _(raw).pluck("Name");
     var goods = data[0];
   
-    for(var i=1; i <= goods.length; i++) {
-        newdata.push({
-            id: data[i].SeriesId[0],
-            name: data[i].Name[0],
-            dates: data[i].Date.map(function(d) {return format.parse(d);}),
-            values: data[i].Values.map(function(d) {return parseFloat(d) || null;})
-        });
-    }
-          
-    //_(raw).each(function(series) {
-  //    var value = {};
-  //    data.push({
-  //      id: series["Series ID"],
-  //      name: series["Name"],
-  //      values: _(range).map(function(month) {
-  //                return parseFloat(series[format(month)]) || null;
-  //              })
-  //    });
-  //  });
+    _(raw).each(function(series) {
+      var value = {};
+      data.push({
+        id: series["Series ID"],
+        name: series["Name"],
+        values: _(range).map(function(month) {
+                  return parseFloat(series[format(month)]) || null;
+                })
+      });
+    });
   
     var values = _(newdata).chain().pluck('values').flatten().value();
   
     y.domain([
       0,
-      d3.max(values)
+      d3.max(data,function(d){return +d.value})
     ]);
   
   
