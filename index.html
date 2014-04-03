@@ -95,7 +95,7 @@ function drawChart( params, data ) {
       height = params.height - params.margin.top - params.margin.bottom;
           
   //make our svg that will house the chart
-  var svg = d3.select("#"+params.chartId).append("svg")
+  var svg = d3.select("#"+params.id).append("svg")
       .attr("width", width + params.margin.left + params.margin.right)
       .attr("height", height + params.margin.top + params.margin.bottom)
     .append("g")
@@ -104,13 +104,17 @@ function drawChart( params, data ) {
       
   var format = d3.time.format("%b %Y");
   
-  var start = format.parse(data[1].Date[0]);
-  var end = format.parse(data[1].Date[data[1].Date.length-1]);
-  var range = d3.time.months(start,end);
+  data.forEach(function(d){
+    d.value = +d.value;
+    d.year = +d.year;
+    d.date = d3.time.format("M%m %Y").parse(d.period + " " + d.year)
+  });
+  
+  var range = d3.extent(data,function(d) { return d.date; }  )
   
   var x = d3.time.scale()
       .range([0,width])
-      .domain(d3.extent(data[1].Date, function(d) { return format.parse(d); }));
+      .domain(range);
   
   var y = d3.scale.linear()
       .range([height, 0]);
@@ -130,31 +134,23 @@ function drawChart( params, data ) {
   var line = d3.svg.line()
       .interpolate("basis")
       .defined(function(d) { return d != null; })
-      .x(function(d,i) { return x(range[i]); })
-      .y(function(d) { return y(d); });
-  
-  //d3.csv("average-prices.csv", function(err, raw) {
-    var goods = _(raw).pluck("Name");
-    var goods = data[0];
-  
-    _(raw).each(function(series) {
-      var value = {};
-      data.push({
-        id: series["Series ID"],
-        name: series["Name"],
-        values: _(range).map(function(month) {
-                  return parseFloat(series[format(month)]) || null;
-                })
+      .x(function(d,i) {
+        return x(d.date);
+      })
+      .y(function(d) { 
+        return y(d.value);
       });
-    });
-  
-    var values = _(newdata).chain().pluck('values').flatten().value();
-  
+
+
     y.domain([
       0,
-      d3.max(values)
+      d3.max(data,function(d){return +d.value})
     ]);
-  
+    
+    
+    data = d3.nest().key(function(d){return d.series_id.replace(/\w{3,4}0{3,4}(\d*)\s*/,"$1")}).entries(data);
+    
+
   
     svg.append("g")
         .attr("class", "x axis")
@@ -173,7 +169,7 @@ function drawChart( params, data ) {
         .text("Average Price");
   
     var series = svg.selectAll(".series")
-        .data(newdata)
+        .data(data)
       .enter().append("g")
         .attr("class", "series");
   
@@ -186,7 +182,7 @@ function drawChart( params, data ) {
         .attr("class", "invisible hover")
         .attr("d", function(d) { return line(d.values); });
   
-    var labels = newdata.map(function(d) { return {name: d.name, y: y(d.values[d.values.length - 1])}});
+   /* var labels = newdata.map(function(d) { return {name: d.name, y: y(d.values[d.values.length - 1])}});
   
     series.append("text")
         .attr("class", "label hover")
@@ -219,7 +215,7 @@ function drawChart( params, data ) {
     };
   
     relax();
-  
+  */
     series.selectAll(".hover")
         .on("mouseover", function(d,i) {
           d3.selectAll(".line")
