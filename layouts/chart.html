@@ -1,0 +1,203 @@
+<div class='container' ng-controller="DemoCtrl">
+  <div class='row'>
+    <div class='col-md-3'>
+      <form class='well'>
+      	{{# controls }}
+        <label><b>{{label}}</b></label>
+    		<select class='form-control' ng-model="opts.{{name}}" 
+          ng-options="ctl for ctl in controls.{{name}}.values">   
+    		</select><br>
+				{{/ controls }}
+        {{# hasFilter }}
+        <select
+          ng-model="selected" 
+          ng-options="c as c.value group by c.variable for c in filters" 
+          class="form-control" multiple size="10">
+        </select>
+        {{/ hasFilter }}
+      </form>
+    </div>
+    <div class='col-md-8'>
+      <div class="bs-docs-example">
+        <div id='{{chartId}}' class='rChart'>
+          <svg></svg>
+        </div>
+        {{# CODE }}<pre><code class='r'>{{CODE}}</code></pre>{{/ CODE }}
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+<script>
+//nearly all the code can be attributed to http://bl.ocks.org/3891711
+
+//get parameters from rCharts
+var params = {{{ chartParams }}}
+    
+function drawChart( data ) {
+  params.margin = params.margin ? params.margin : {top: 20, right: 220, bottom: 30, left: 50}
+  var width = params.width - margin.left - margin.right,
+      height = params.height - margin.top - margin.bottom;
+          
+  //make our svg that will house the chart
+  var svg = d3.select("#"+params.chartId).append("svg");
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+    .append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");        
+          
+      
+  var format = d3.time.format("%b %Y");
+  
+  var start = format.parse(data[1].Date[0]);
+  var end = format.parse(data[1].Date[data[1].Date.length-1]);
+  var range = d3.time.months(start,end);
+  
+  var x = d3.time.scale()
+      .range([0,width])
+      .domain(d3.extent(data[1].Date, function(d) { return format.parse(d); }));
+  
+  var y = d3.scale.linear()
+      .range([height, 0]);
+  
+  var color = function(i) {
+    return d3.hcl(48*i,95,45).toString();
+  };
+  
+  var xAxis = d3.svg.axis()
+      .scale(x)
+      .orient("bottom");
+  
+  var yAxis = d3.svg.axis()
+      .scale(y)
+      .orient("left");
+  
+  var line = d3.svg.line()
+      .interpolate("basis")
+      .defined(function(d) { return d != null; })
+      .x(function(d,i) { return x(range[i]); })
+      .y(function(d) { return y(d); });
+  
+  //d3.csv("average-prices.csv", function(raw) {
+    var newdata = [];
+    //var goods = _(raw).pluck("Name");
+    var goods = data[0];
+  
+    for(var i=1; i <= goods.length; i++) {
+        newdata.push({
+            id: data[i].SeriesId[0],
+            name: data[i].Name[0],
+            dates: data[i].Date.map(function(d) {return format.parse(d);}),
+            values: data[i].Values.map(function(d) {return parseFloat(d) || null;})
+        });
+    }
+          
+    //_(raw).each(function(series) {
+  //    var value = {};
+  //    data.push({
+  //      id: series["Series ID"],
+  //      name: series["Name"],
+  //      values: _(range).map(function(month) {
+  //                return parseFloat(series[format(month)]) || null;
+  //              })
+  //    });
+  //  });
+  
+    var values = _(newdata).chain().pluck('values').flatten().value();
+  
+    y.domain([
+      0,
+      d3.max(values)
+    ]);
+  
+  
+    svg.append("g")
+        .attr("class", "x axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(xAxis);
+  
+    svg.append("g")
+        .attr("class", "y axis")
+        .call(yAxis)
+      .append("text")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 6)
+        .attr("dy", ".71em")
+        .style("text-anchor", "end")
+        .style("font-weight", "bold")
+        .text("Average Price");
+  
+    var series = svg.selectAll(".series")
+        .data(newdata)
+      .enter().append("g")
+        .attr("class", "series");
+  
+    series.append("path")
+        .attr("class", "line")
+        .attr("d", function(d) { return line(d.values); })
+        .style("stroke", function(d,i) { return color(i); });
+  
+    series.append("path")
+        .attr("class", "invisible hover")
+        .attr("d", function(d) { return line(d.values); });
+  
+    var labels = newdata.map(function(d) { return {name: d.name, y: y(d.values[d.values.length - 1])}});
+  
+    series.append("text")
+        .attr("class", "label hover")
+        .data(labels)
+        .attr("transform", function(d) { return "translate(" + x(end) + "," + d.y + ")"; })
+        .attr("x", 3)
+        .attr("dy", ".35em")
+        .style("fill", function(d,i) { return color(i); })
+        .text(function(d) { return d.name; });
+  
+    // constraint relaxation on labels
+    var alpha = 0.5;
+    var spacing = 12;
+    function relax() {
+      var again = false;
+      labels.forEach(function(a,i) {
+        labels.slice(i+1).forEach(function(b) {
+          var dy = a.y - b.y;
+          if (Math.abs(dy) < spacing) {
+            again = true;
+            var sign = dy > 0 ? 1 : -1;
+            a.y += sign*alpha;
+            b.y -= sign*alpha;
+          }
+        });
+      });
+      d3.selectAll(".label")
+        .attr("transform", function(d) { return "translate(" + x(end) + "," + d.y + ")"; });
+      if (again) setTimeout(relax,20);
+    };
+  
+    relax();
+  
+    series.selectAll(".hover")
+        .on("mouseover", function(d,i) {
+          d3.selectAll(".line")
+            .style("opacity", 0.12)
+            .filter(function(p) { return p.name == d.name; })
+            .style("opacity", 1)
+            .style("stroke-width", 2.5);
+          d3.selectAll(".series text")
+            .style("opacity", 0)
+            .filter(function(p) { return p.name == d.name; })
+            .style("opacity", 1);
+        })
+        .on("mouseout", function(d,i) {
+          d3.selectAll(".line")
+            .style("opacity", 1)
+            .style("stroke-width", null);
+          d3.selectAll(".series text")
+            .style("opacity", 1);
+        });
+};
+
+
+</script>

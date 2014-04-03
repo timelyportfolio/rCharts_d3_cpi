@@ -1,0 +1,32 @@
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.line {
+  fill: none;
+  stroke: steelblue;
+  stroke-width: 1.5px;
+  -webkit-transition: opacity 0.3s;
+  -moz-transition: opacity 0.3s;
+  -o-transition: opacity 0.3s;
+  transition: opacity 0.3s;
+}
+
+path.invisible {
+  fill: none;
+  stroke: rgba(0,0,0,0);
+  stroke-width: 8px;
+}
+
+text.label {
+  font-size: 12px;
+  font-weight: bold;
+}
+
