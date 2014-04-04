@@ -32,7 +32,7 @@ cpi1$lib <- "d3_cpi"
 #cpi1$addAssets(
   #possible bug in rCharts here since getting added to both css and js when css defined
   #in config.yml
-#  css = NULL,
+  #css = "http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css"
 #  jshead = "http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.1/angular.min.js"
 #)
 cpi1$setTemplate(

@@ -55,17 +55,18 @@ function DemoCtrl( $scope ){
 
 function drawChart( params, data ) {
   if( typeof(params.margin) === "undefined" ) {
-    params.margin = params.margin ? params.margin : {top: 20, right: 220, bottom: 30, left: 50}
+    params.margin = params.margin ? params.margin : {top: 20, right: 220, bottom: 30, left: 100}
   }
   var width = params.width - params.margin.left - params.margin.right,
       height = params.height - params.margin.top - params.margin.bottom;
           
   //make our svg that will house the chart
-  var svg = d3.select("#"+params.id).append("svg")
-      .attr("width", width + params.margin.left + params.margin.right)
-      .attr("height", height + params.margin.top + params.margin.bottom)
-    .append("g")
-      .attr("transform", "translate(" + params.margin.left + "," + params.margin.top + ")");        
+  var svg = d3.select("#"+params.id).select("svg")[0][0] ? d3.select("#"+params.id).select("svg") :  d3.select("#"+params.id).append("svg")
+    .attr("width", width + params.margin.left + params.margin.right)
+    .attr("height", height + params.margin.top + params.margin.bottom)
+  var chart = svg.select(".chart")[0][0] ? svg.select(".chart") : svg.append("g")
+    .attr("class","chart")
+    .attr("transform", "translate(" + params.margin.left + "," + params.margin.top + ")");        
           
       
   var format = d3.time.format("%b %Y");
@@ -83,7 +84,13 @@ function drawChart( params, data ) {
       .domain(range);
   
   var y = d3.scale.linear()
-      .range([height, 0]);
+      .range([height, 0])
+      .domain([
+        0,
+        d3.max(data,function(d){return +d.value})
+      ]);
+    
+          
   
   var color = function(i) {
     return d3.hcl(48*i,95,45).toString();
@@ -99,7 +106,7 @@ function drawChart( params, data ) {
   
   var line = d3.svg.line()
       .interpolate("basis")
-      .defined(function(d) { return d != null; })
+      //.defined(function(d) { return d != null; })
       .x(function(d,i) {
         return x(d.date);
       })
@@ -108,45 +115,53 @@ function drawChart( params, data ) {
       });
 
 
-    y.domain([
-      0,
-      d3.max(data,function(d){return +d.value})
-    ]);
-    
-    
     data = d3.nest().key(function(d){return d.series_id.replace(/\w{3,4}0{3,4}(\d*)\s*/,"$1")}).entries(data);
     
 
   
-    svg.append("g")
+    var xax = (chart.select(".x.axis")[0][0] ? chart.select(".x.axis") : chart.append("g"))
         .attr("class", "x axis")
         .attr("transform", "translate(0," + height + ")")
         .call(xAxis);
   
-    svg.append("g")
+    var yax = (chart.select(".y.axis")[0][0] ? chart.select(".y.axis") : chart.append("g"))
         .attr("class", "y axis")
-        .call(yAxis)
-      .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end")
-        .style("font-weight", "bold")
-        .text("Average Price");
+        .call(yAxis);
+        
+    if(!(yax.select("text")[0][0])) {
+      yax
+        .append("text")
+          .attr("transform", "rotate(-90)")
+          .attr("y", 6)
+          .attr("dy", ".71em")
+          .style("text-anchor", "end")
+          .style("font-weight", "bold")
+          .text("Average Price");
+    }
+    
+    var series = chart.selectAll(".line").data(data)
+    
+    series.enter()
+        .append("path")
+        .attr("class", "line");
+    
+  /*  series.enter()
+        .append("path")
+        .attr("class", "invisible hover");
+    */
   
-    var series = svg.selectAll(".series")
-        .data(data)
-      .enter().append("g")
-        .attr("class", "series");
-  
-    series.append("path")
-        .attr("class", "line")
-        .attr("d", function(d) { return line(d.values); })
-        .style("stroke", function(d,i) { return color(i); });
-  
-    series.append("path")
-        .attr("class", "invisible hover")
-        .attr("d", function(d) { return line(d.values); });
+    series
+      .attr("d", function(d) { return line(d.values); })
+      .style("stroke", function(d,i) {
+        return color(i);
+      });    
+      
+    series.exit().remove();      
+      
+    chart.selectAll(".invisible.hover")      
+      .attr("d", function(d) { return line(d.values); });          
+    
+
   
    /* var labels = newdata.map(function(d) { return {name: d.name, y: y(d.values[d.values.length - 1])}});
   
