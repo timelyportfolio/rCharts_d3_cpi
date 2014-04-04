@@ -1,8 +1,37 @@
+---
+title: CPI Analysis | rCharts + d3.js Analysis
+lead: A Little Different Way to Combine R & Javascript
+framework: pure
+mode     : selfcontained # {standalone, draft}
+highlighter: prettify
+hitheme: twitter-bootstrap
+assets:
+  css:
+    - http://yui.yahooapis.com/pure/0.4.2/pure-min.css
+    - http://purecss.io/combo/1.11.2?/css/main-grid.css&/css/main.css&/css/home.css&/css/rainbow/baby-blue.css
+    - http://fonts.googleapis.com/css?family=Roboto:300,400
+    - http://fonts.googleapis.com/css?family=Oxygen:300
+---
+```{r echo = F, warning=F, error=F, message=F}
+require(knitr)
+opts_chunk$set(
+  warning=F,
+  error=F,
+  message=F,
+  fig.width = 10,
+  fig.height = 8,
+  results='asis',
+  cache = F,
+  tidy = F
+)
+```
+
+
+```{r}
 #here are the two data source, but really don't need to do this in R
 #could easily supply the locations as data instead
 #and use d3.tsv
 #but might generate the filters in R just to show combo
-
 
 #put items in data frame
 items.df <- read.delim(
@@ -39,7 +68,9 @@ items.joined <- items.df %.%
 #  , stringsAsFactors=FALSE
 #  , strip.white=TRUE
 #)
+```
 
+```{r}
 require(rCharts)
 options(viewer=NULL)
 
@@ -64,5 +95,6 @@ cpi1$set(
   margins = list(bottom = 30, top = 50, left = 40, right = 400)
 )
 cpi1$params$filters = items.joined
-cpi1$save("index.html",cdn=T)
-
+cat(cpi1$html())
+#cpi1$save("example.html",cdn=T)
+```

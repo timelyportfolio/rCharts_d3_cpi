@@ -5,7 +5,7 @@
 
         <select
           ng-model="selected" 
-          ng-options="c.item_code for c in filters" 
+          ng-options="c.item_name for c in filters" 
           class="form-control" multiple size="10">
         </select>
 
@@ -35,16 +35,19 @@ function DemoCtrl( $scope ){
     $scope.data = data;
   })
   
-  $scope.drawChart = function( data ){
-    drawChart( $scope.opts, data )  
+  $scope.drawChart = function( data, info ){
+    drawChart( $scope.opts, data, info )  
   }
 
   $scope.$watch('selected', function(){
     if (!(typeof($scope.selected) === "undefined")) {
       $scope.drawChart(
         _.select($scope.data, function(c){    
-          return _.pluck($scope.selected,"code").indexOf(c.series_id.replace(/\w{3,4}0{3,4}(\d*)\s*/,"$1")) != -1
-        })
+          return _.pluck($scope.selected,"series_id").indexOf(c.series_id.replace(/(\d\w*)\s*/,"$1")) != -1
+          //leave regex just in case
+          //.replace(/\w{3,4}0{3,4}(\d*)\s*/,"$1")
+        }),
+        $scope.selected
       )
     }
   }) 
@@ -53,20 +56,20 @@ function DemoCtrl( $scope ){
 
 //nearly all the code can be attributed to http://bl.ocks.org/3891711
 
-function drawChart( params, data ) {
-  if( typeof(params.margin) === "undefined" ) {
-    params.margin = params.margin ? params.margin : {top: 20, right: 220, bottom: 30, left: 100}
+function drawChart( params, data, info ) {
+  if( typeof(params.margins) === "undefined" ) {
+    params.margins = params.margins ? params.margins : {top: 40, right: 220, bottom: 30, left: 100}
   }
-  var width = params.width - params.margin.left - params.margin.right,
-      height = params.height - params.margin.top - params.margin.bottom;
+  var width = params.width - params.margins.left - params.margins.right,
+      height = params.height - params.margins.top - params.margins.bottom;
           
   //make our svg that will house the chart
   var svg = d3.select("#"+params.id).select("svg")[0][0] ? d3.select("#"+params.id).select("svg") :  d3.select("#"+params.id).append("svg")
-    .attr("width", width + params.margin.left + params.margin.right)
-    .attr("height", height + params.margin.top + params.margin.bottom)
+    .attr("width", width + params.margins.left + params.margins.right)
+    .attr("height", height + params.margins.top + params.margins.bottom)
   var chart = svg.select(".chart")[0][0] ? svg.select(".chart") : svg.append("g")
     .attr("class","chart")
-    .attr("transform", "translate(" + params.margin.left + "," + params.margin.top + ")");        
+    .attr("transform", "translate(" + params.margins.left + "," + params.margins.top + ")");        
           
       
   var format = d3.time.format("%b %Y");
@@ -85,10 +88,6 @@ function drawChart( params, data ) {
   
   var y = d3.scale.linear()
       .range([height, 0])
-      .domain([
-        0,
-        d3.max(data,function(d){return +d.value})
-      ]);
     
           
   
@@ -96,6 +95,25 @@ function drawChart( params, data ) {
     return d3.hcl(48*i,95,45).toString();
   };
   
+
+  data = d3.nest().key(function(d){return d.series_id.replace(/(\d\w*)\s*/,"$1")}).entries(data);
+  
+  //it seems to me cumulative growth is much better for comparison
+  //let's do this calculation
+  var maxcumul;
+  data.forEach(function(series){
+    series.values.forEach(function(period){
+      period.cumul = period.value / series.values[0].value;
+    })
+    var seriesmax = d3.max(series.values,function(d){return d.cumul});
+    maxcumul = maxcumul > seriesmax ? maxcumul : seriesmax;
+  })
+  
+  y.domain([
+      0,
+      maxcumul
+    ]);
+    
   var xAxis = d3.svg.axis()
       .scale(x)
       .orient("bottom");
@@ -111,12 +129,8 @@ function drawChart( params, data ) {
         return x(d.date);
       })
       .y(function(d) { 
-        return y(d.value);
-      });
-
-
-    data = d3.nest().key(function(d){return d.series_id.replace(/\w{3,4}0{3,4}(\d*)\s*/,"$1")}).entries(data);
-    
+        return y(d.cumul);
+      });    
 
   
     var xax = (chart.select(".x.axis")[0][0] ? chart.select(".x.axis") : chart.append("g"))
@@ -128,59 +142,58 @@ function drawChart( params, data ) {
         .attr("class", "y axis")
         .call(yAxis);
         
-    if(!(yax.select("text")[0][0])) {
+    if(!(yax.select(".ylab")[0][0])) {
       yax
         .append("text")
+          .attr("class","ylab")
           .attr("transform", "rotate(-90)")
           .attr("y", 6)
           .attr("dy", ".71em")
           .style("text-anchor", "end")
           .style("font-weight", "bold")
-          .text("Average Price");
+          .text("Cumulative Growth");
     }
     
-    var series = chart.selectAll(".line").data(data)
+    var series = chart.selectAll(".series").data(data)
     
     series.enter()
-        .append("path")
-        .attr("class", "line");
-    
-  /*  series.enter()
-        .append("path")
-        .attr("class", "invisible hover");
-    */
-  
-    series
-      .attr("d", function(d) { return line(d.values); })
-      .style("stroke", function(d,i) {
-        return color(i);
-      });    
-      
-    series.exit().remove();      
-      
-    chart.selectAll(".invisible.hover")      
-      .attr("d", function(d) { return line(d.values); });          
-    
+      .append("g")
+      .attr("class","series")
+        
+    series.exit().remove(); 
 
-  
-   /* var labels = newdata.map(function(d) { return {name: d.name, y: y(d.values[d.values.length - 1])}});
-  
-    series.append("text")
-        .attr("class", "label hover")
-        .data(labels)
-        .attr("transform", function(d) { return "translate(" + x(end) + "," + d.y + ")"; })
+    series.each(function(d,i){
+      serie = d3.select(this);
+      (serie.select(".line")[0][0] ? serie.select(".line") : serie.append("path").attr("class","line"))
+        .attr("d", function(d){ return line(d.values) })
+        .style("stroke", color(i));
+      
+     (serie.select(".invisible.hover")[0][0] ? serie.select(".invisible.hover") : serie.append("path").attr("class","invisible hover"))
+        .attr("d", function(d){ return line(d.values) }) ;
+        
+     (serie.select(".label.hover")[0][0] ? serie.select(".label.hover") : serie.append("text").attr("class","label hover"))
+        .datum({"y":y(serie.datum().values[serie.datum().values.length-1].cumul)})
+        .attr("transform", function(d){
+          return "translate(" + width + "," + d.y + ")"
+        })
         .attr("x", 3)
         .attr("dy", ".35em")
-        .style("fill", function(d,i) { return color(i); })
-        .text(function(d) { return d.name; });
+        .style("fill", color(i))
+        .style("font-size","9px")
+        .text(_.filter(info,{"series_id":serie.datum().key})[0].item_name);        
+    });
+  
+   /* var labels = newdata.map(function(d) { return {name: d.name, y: y(d.values[d.values.length - 1])}});
+
+*/
   
     // constraint relaxation on labels
     var alpha = 0.5;
     var spacing = 12;
     function relax() {
       var again = false;
-      labels.forEach(function(a,i) {
-        labels.slice(i+1).forEach(function(b) {
+      d3.selectAll(".label").each(function(a,i) {
+        d3.selectAll(d3.selectAll(".label")[0].slice(i+1)).each(function(b) {
           var dy = a.y - b.y;
           if (Math.abs(dy) < spacing) {
             again = true;
@@ -191,30 +204,35 @@ function drawChart( params, data ) {
         });
       });
       d3.selectAll(".label")
-        .attr("transform", function(d) { return "translate(" + x(end) + "," + d.y + ")"; });
+        .attr("transform", function(d) { return "translate(" + width + "," + d.y + ")"; });
       if (again) setTimeout(relax,20);
     };
   
     relax();
-  */
-    series.selectAll(".hover")
+  
+    series
         .on("mouseover", function(d,i) {
-          d3.selectAll(".line")
+          d3.select(this).selectAll(".line")
             .style("opacity", 0.12)
-            .filter(function(p) { return p.name == d.name; })
+            //.filter(function(p) { return p.name == d.name; })
             .style("opacity", 1)
             .style("stroke-width", 2.5);
-          d3.selectAll(".series text")
-            .style("opacity", 0)
-            .filter(function(p) { return p.name == d.name; })
-            .style("opacity", 1);
+          
+          d3.select(this).selectAll("text")
+            .style(
+              "font-size",
+              (+d3.select(this).selectAll("text").style("font-size").replace(/px/,"") * 1.5) + "px"
+          )
         })
         .on("mouseout", function(d,i) {
-          d3.selectAll(".line")
+          d3.select(this).selectAll(".line")
             .style("opacity", 1)
             .style("stroke-width", null);
-          d3.selectAll(".series text")
-            .style("opacity", 1);
+          d3.select(this).selectAll("text")
+            .style(
+              "font-size",
+              (+d3.select(this).selectAll("text").style("font-size").replace(/px/,"") / 1.5) + "px"
+          )
         });
 };
 
