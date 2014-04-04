@@ -1,6 +1,5 @@
 ---
-title: CPI Analysis | rCharts + d3.js Analysis
-subtitle: A Little Different Way to Combine R & Javascript
+title: CPI Components | rCharts + d3.js Analysis
 framework: bootstrap
 mode     : selfcontained # {standalone, draft}
 highlighter: prettify
@@ -34,8 +33,25 @@ opts_chunk$set(
 )
 ```
 
+<div class="page-header">
+  <h1>{{ page.title }}</h1>
+  <h3>{{ page.subtitle }}</h3>
+</div>
 
-```{r eval = F}
+A mutual fund presented yesterday, and it seemed like I was in 2003-2006 all over again as they discussed the inflationary tinder and told anecdotes about avocado prices and other foods, referenced Friedman quotes, and reminisced about boyhood in the inflationary 70s.
+
+
+I went back to my desk and immediately tried to fire up my [old Shiny/d3 CPI graphs](http://glimmer.rstudio.com/timelyportfolio/d3-shiny-cpi/).  Unfortunately though I got an error, since the [BLS changed from ftp to http](http://www.bls.gov/bls/discontinuation_ftp.htm) on March 1, 2014.  Intead of fixing the old, I completely rewrote the chart with [rCharts](http://rcharts.io) and [d3.js](http://d3js.org) again using [this nice example](http://bl.ocks.org/syntagmatic/4053096) from [@syntagmatic](https://twitter.com/syntagmatic).  **This still needs work.**  The multiple series with same name are from the different [BLS areas](http://stats.bls.gov/cpi/cpifaq.htm#Question_17).  I'll try to make that into a separate Angular filter.
+
+
+When someone starts talking about abstruse food prices, use this handy CPI component graph, or quandl offers some difficult to find [food prices]() with a [great API](http://www.quandl.com/help/api) and even [packages for almost every language and Excel](http://www.quandl.com/help/packages).
+
+
+### Question in My Mind
+If "Inflation is always and everywhere a monetary phenomenon in the sense that it is and can be produced only by a more rapid increase in the quantity of money than in output" ([Friedman 1970](http://en.wikiquote.org/wiki/Milton_Friedman)) then **what is deflation?**
+
+
+```{r echo = F, eval = F}
 #here are the two data source, but really don't need to do this in R
 #could easily supply the locations as data instead
 #and use d3.tsv
@@ -78,7 +94,7 @@ items.joined <- items.df %.%
 #)
 ```
 
-```{r}
+```{r echo = F}
 require(rCharts)
 options(viewer=NULL)
 
