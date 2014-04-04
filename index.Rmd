@@ -1,17 +1,25 @@
 ---
 title: CPI Analysis | rCharts + d3.js Analysis
-lead: A Little Different Way to Combine R & Javascript
-framework: pure
+subtitle: A Little Different Way to Combine R & Javascript
+framework: bootstrap
 mode     : selfcontained # {standalone, draft}
 highlighter: prettify
 hitheme: twitter-bootstrap
 assets:
   css:
-    - http://yui.yahooapis.com/pure/0.4.2/pure-min.css
-    - http://purecss.io/combo/1.11.2?/css/main-grid.css&/css/main.css&/css/home.css&/css/rainbow/baby-blue.css
+    - http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css
     - http://fonts.googleapis.com/css?family=Roboto:300,400
     - http://fonts.googleapis.com/css?family=Oxygen:300
+    - ./css/local.css
+  jshead:
+    - http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.1/angular.min.js
+    - http://d3js.org/d3.v3.js
+    - http://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.js
+    
 ---
+
+<a href="https://github.com/timelyportfolio/rCharts_d3_cpi"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub"></a>
+
 ```{r echo = F, warning=F, error=F, message=F}
 require(knitr)
 opts_chunk$set(
@@ -27,7 +35,7 @@ opts_chunk$set(
 ```
 
 
-```{r}
+```{r eval = F}
 #here are the two data source, but really don't need to do this in R
 #could easily supply the locations as data instead
 #and use d3.tsv
@@ -84,8 +92,9 @@ cpi1$lib <- "d3_cpi"
 #  jshead = "http://cdnjs.cloudflare.com/ajax/libs/angular.js/1.2.1/angular.min.js"
 #)
 cpi1$setTemplate(
-  chartDiv = '<div></div>',
-  afterScript = '<script></script>'
+  chartDiv = '<div></div>'
+  ,afterScript = '<script></script>'
+  #,script = "./layouts/chart_pure.html"
 )
 #just a couple of parameters that we might like to see
 cpi1$set(
@@ -96,5 +105,4 @@ cpi1$set(
 )
 cpi1$params$filters = items.joined
 cat(cpi1$html())
-#cpi1$save("example.html",cdn=T)
 ```

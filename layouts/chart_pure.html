@@ -1,17 +1,12 @@
-<div class='container' ng-controller="DemoCtrl">
-  <div class='row'>
-    <div class='col-md-3'>
-      <form class='well'>
-
+<div class='pure-g-r' ng-app ng-controller="DemoCtrl">
+    <div class='pure-u-6-24'>
         <select
           ng-model="selected" 
           ng-options="c.item_name for c in filters" 
           class="form-control" multiple size="10">
         </select>
-
-      </form>
     </div>
-    <div class='col-md-8'>
+    <div class='pure-u-18-24'>
       <div class="bs-docs-example">
         <div id='{{chartId}}' class='rChart'>
           <svg></svg>
@@ -19,7 +14,6 @@
         {{# CODE }}<pre><code class='r'>{{CODE}}</code></pre>{{/ CODE }}
       </div>
     </div>
-  </div>
 </div>
 
 
@@ -57,8 +51,6 @@ function DemoCtrl( $scope ){
 //nearly all the code can be attributed to http://bl.ocks.org/3891711
 
 function drawChart( params, data, info ) {
-  d3.select("#"+params.id).style("height",params.height +"px");
-  
   if( typeof(params.margins) === "undefined" ) {
     params.margins = params.margins ? params.margins : {top: 40, right: 220, bottom: 30, left: 100}
   }
